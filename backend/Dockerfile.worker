@@ -1,8 +1,9 @@
 FROM python:3.11-slim
 
-# PaddleOCR / OpenCV runtime libs
+# PaddleOCR / OpenCV / paddlepaddle runtime libs (libgomp1: OpenMP, paddle's
+# core op kernels are linked against it and fail at import without it)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
+    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir uv==0.6.17
@@ -16,4 +17,4 @@ COPY . .
 
 ENV PATH="/app/.venv/bin:${PATH}"
 
-CMD ["python", "-m", "app.worker"]
+CMD ["python", "-m", "app.pipeline.worker"]

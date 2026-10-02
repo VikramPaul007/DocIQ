@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -26,7 +26,7 @@ SCHEMA = {
     },
 }
 
-EVALUATED_AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
+EVALUATED_AT = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def _rule(condition: dict, rule_id: str = "r1") -> dict:

@@ -5,10 +5,13 @@ import { useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { RecordView } from "@/features/records/RecordView";
 import { ApiError, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { fieldPaths } from "@/lib/schema-fields";
-import type { Template, TemplateVersion, ValidateResult } from "@/lib/types";
+import type { JobOut, RecordOut, Template, TemplateVersion, UploadResult, ValidateResult } from "@/lib/types";
+
+const TERMINAL_JOB_STATUSES = new Set(["REVIEW_REQUIRED", "COMPLETED", "FAILED"]);
 
 const RULE_CATEGORIES = [
   "completeness",
@@ -149,6 +152,31 @@ export function TemplateEditorPage() {
   const isDraft = version?.status === "draft";
   const hasOpenDraft = useMemo(() => versions?.some((v) => v.status === "draft") ?? false, [versions]);
 
+  const [testJobId, setTestJobId] = useState<string | null>(null);
+  const runTest = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api.upload<UploadResult>(`/versions/${selectedVersionId}/test`, form);
+    },
+    onSuccess: (result) => setTestJobId(result.job_id),
+    onError: (err: unknown) => setError(err instanceof ApiError ? err.message : "Upload failed"),
+  });
+
+  const { data: testJob } = useQuery({
+    queryKey: ["job", testJobId],
+    queryFn: () => api.get<JobOut>(`/jobs/${testJobId}`),
+    enabled: !!testJobId,
+    refetchInterval: (query) =>
+      query.state.data && TERMINAL_JOB_STATUSES.has(query.state.data.status) ? false : 1500,
+  });
+
+  const { data: testRecord } = useQuery({
+    queryKey: ["record", testJob?.record_id],
+    queryFn: () => api.get<RecordOut>(`/records/${testJob?.record_id}`),
+    enabled: !!testJob?.record_id,
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -198,6 +226,9 @@ export function TemplateEditorPage() {
           </Tabs.Trigger>
           <Tabs.Trigger value="scoring" className={tabTrigger}>
             Scoring
+          </Tabs.Trigger>
+          <Tabs.Trigger value="test" className={tabTrigger}>
+            Test
           </Tabs.Trigger>
           <Tabs.Trigger value="publish" className={tabTrigger}>
             Publish
@@ -437,6 +468,43 @@ export function TemplateEditorPage() {
                   )}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </Tabs.Content>
+
+        <Tabs.Content value="test" className="pt-4">
+          <Card>
+            <CardContent className="flex flex-col gap-4 pt-4">
+              <p className="text-sm text-slate-600">
+                Run a sample PDF through this version (v{version?.version_no}, {version?.status}) and
+                see every intermediate output — OCR, extraction, validation, rules, score, risk, and
+                summary. This never affects the reviewer queue.
+              </p>
+              {canManage && (
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setError(null);
+                      setTestJobId(null);
+                      runTest.mutate(file);
+                    }
+                  }}
+                />
+              )}
+              {runTest.isPending && <p className="text-sm text-slate-500">Uploading…</p>}
+              {testJob && !TERMINAL_JOB_STATUSES.has(testJob.status) && (
+                <p className="text-sm text-slate-500">
+                  Processing… ({testJob.status}
+                  {testJob.stage ? ` — ${testJob.stage}` : ""})
+                </p>
+              )}
+              {testJob?.status === "FAILED" && (
+                <p className="text-sm text-red-600">Failed: {testJob.last_error}</p>
+              )}
+              {testRecord && <RecordView record={testRecord} />}
             </CardContent>
           </Card>
         </Tabs.Content>

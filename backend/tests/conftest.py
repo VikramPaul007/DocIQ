@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import random
 import uuid
 from collections.abc import Iterator
@@ -14,6 +15,37 @@ from app.db import engine
 from app.main import app
 from app.models import Membership, User
 from app.security import hash_password
+
+
+def minimal_pdf_with_text(text_content: str) -> bytes:
+    """A hand-written, minimal-but-valid single-page PDF with a real text
+    layer — pdfium can parse this without a correct xref table (it falls
+    back to a linear scan), so no PDF-authoring library is needed in tests."""
+    stream = f"BT /F1 24 Tf 10 100 Td ({text_content}) Tj ET".encode()
+    return (
+        b"%PDF-1.4\n"
+        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+        b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R"
+        b"/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
+        b"4 0 obj<</Length " + str(len(stream)).encode() + b">>stream\n" + stream + b"\nendstream\nendobj\n"
+        b"5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n"
+        b"trailer<</Root 1 0 R>>\n%%EOF"
+    )
+
+
+def minimal_blank_pdf(pages: int = 1) -> bytes:
+    """A valid PDF with no text layer at all — exercises the OCR-fallback
+    path. Built with pypdfium2 itself rather than hand-written PDF syntax."""
+    import pypdfium2 as pdfium
+
+    doc = pdfium.PdfDocument.new()
+    for _ in range(pages):
+        doc.new_page(200, 200)
+    buf = io.BytesIO()
+    doc.save(buf)
+    doc.close()
+    return buf.getvalue()
 
 # Child-to-parent order so FK constraints don't block the cleanup even though
 # most of them would CASCADE anyway.

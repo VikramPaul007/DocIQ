@@ -1,14 +1,23 @@
-"""Object storage (MinIO, S3 API). Encrypted put/get land with document
-upload in a later milestone; for now this just gives the API and the health
-check a shared client and an idempotent bucket-ensure."""
+"""Object storage (MinIO, S3 API), with application-level AES-256-GCM
+encryption on top — MinIO/S3 server-side encryption alone would protect data
+at rest against someone with disk access, not against someone with S3 API
+access but not the document encryption key, which is the actual scenario we
+want to be defended against (anyone who gets to the bucket alone gets
+ciphertext, not documents)."""
 
 from __future__ import annotations
+
+import os
+import uuid
 
 import boto3
 from botocore.client import BaseClient
 from botocore.exceptions import ClientError
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from app.config import settings
+
+_NONCE_SIZE = 12  # bytes; AES-GCM's recommended nonce size
 
 
 def get_s3_client() -> BaseClient:
@@ -35,3 +44,33 @@ def storage_healthy() -> bool:
         return True
     except Exception:
         return False
+
+
+def _key() -> bytes:
+    return bytes.fromhex(settings.document_encryption_key)
+
+
+def encrypt(data: bytes) -> bytes:
+    """Random nonce prefix + ciphertext (GCM tag included) — self-contained,
+    no separate nonce column needed."""
+    nonce = os.urandom(_NONCE_SIZE)
+    ciphertext = AESGCM(_key()).encrypt(nonce, data, None)
+    return nonce + ciphertext
+
+
+def decrypt(blob: bytes) -> bytes:
+    nonce, ciphertext = blob[:_NONCE_SIZE], blob[_NONCE_SIZE:]
+    return AESGCM(_key()).decrypt(nonce, ciphertext, None)
+
+
+def put_document(storage_key: uuid.UUID, data: bytes) -> None:
+    client = get_s3_client()
+    client.put_object(
+        Bucket=settings.minio_bucket, Key=str(storage_key), Body=encrypt(data)
+    )
+
+
+def get_document(storage_key: uuid.UUID) -> bytes:
+    client = get_s3_client()
+    obj = client.get_object(Bucket=settings.minio_bucket, Key=str(storage_key))
+    return decrypt(obj["Body"].read())

@@ -54,6 +54,13 @@ class LlmProvider(Protocol):
         timeout: float = 30.0,
     ) -> LlmResult: ...
 
+    def complete_text(
+        self, *, system: str, user: str, max_tokens: int = 500, timeout: float = 30.0
+    ) -> str:
+        """Free-form text completion (summaries) — no schema to validate
+        against, so no repair-retry loop."""
+        ...
+
 
 def _parse_and_validate(text: str, schema: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     try:
@@ -111,6 +118,20 @@ class OpenAICompatibleProvider:
             latency_ms=latency_ms,
         )
 
+    def complete_text(
+        self, *, system: str, user: str, max_tokens: int = 500, timeout: float = 30.0
+    ) -> str:
+        resp = self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user[:MAX_INPUT_CHARS]},
+            ],
+            max_tokens=max_tokens,
+            timeout=timeout,
+        )
+        return resp.choices[0].message.content or ""
+
     def _call(
         self, system: str, user: str, schema: dict[str, Any], max_tokens: int, timeout: float
     ) -> tuple[str, dict[str, Any] | None]:
@@ -151,8 +172,9 @@ class FakeLlmProvider:
     one repeats if called more times than provided), so tests can exercise
     repair-retry loops deterministically without hitting a real LLM."""
 
-    def __init__(self, responses: list[dict[str, Any]]):
+    def __init__(self, responses: list[dict[str, Any]], text_response: str = "Fake summary."):
         self._responses = responses
+        self._text_response = text_response
         self.calls = 0
 
     def complete_json(
@@ -169,3 +191,8 @@ class FakeLlmProvider:
         return LlmResult(
             content=content, model="fake", prompt_tokens=10, completion_tokens=10, latency_ms=1.0
         )
+
+    def complete_text(
+        self, *, system: str, user: str, max_tokens: int = 500, timeout: float = 30.0
+    ) -> str:
+        return self._text_response

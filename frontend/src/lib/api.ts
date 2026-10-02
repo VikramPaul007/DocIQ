@@ -70,5 +70,6 @@ export const api = {
     apiFetch<T>(path, { method: "PUT", body: json !== undefined ? JSON.stringify(json) : undefined }),
   patch: <T>(path: string, json?: unknown) =>
     apiFetch<T>(path, { method: "PATCH", body: json !== undefined ? JSON.stringify(json) : undefined }),
+  upload: <T>(path: string, formData: FormData) => apiFetch<T>(path, { method: "POST", body: formData }),
   delete: <T>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
 };

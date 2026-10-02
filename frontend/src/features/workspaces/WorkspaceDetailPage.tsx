@@ -53,12 +53,20 @@ export function WorkspaceDetailPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-slate-900">{workspace?.name ?? "…"}</h1>
-        <Link
-          to={`/workspaces/${workspaceId}/templates`}
-          className="text-sm font-medium text-slate-700 underline"
-        >
-          Templates →
-        </Link>
+        <div className="flex gap-4">
+          <Link
+            to={`/workspaces/${workspaceId}/templates`}
+            className="text-sm font-medium text-slate-700 underline"
+          >
+            Templates →
+          </Link>
+          <Link
+            to={`/workspaces/${workspaceId}/documents`}
+            className="text-sm font-medium text-slate-700 underline"
+          >
+            Documents →
+          </Link>
+        </div>
       </div>
 
       <Card>
