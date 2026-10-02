@@ -1,7 +1,5 @@
 """Draft/publish lifecycle for template versions — see "Business Rules for
-Publishing" in docs/technical-implementation-plan.md. Rule/scoring validation
-is added here once the rule engine lands (Milestone 5); for now publish only
-re-checks the schema.
+Publishing" in docs/technical-implementation-plan.md.
 """
 
 from __future__ import annotations
@@ -13,6 +11,8 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.domain import schema_subset
+from app.domain.rules import validate_rules
+from app.domain.scoring import validate_scoring_config
 from app.models import Template, TemplateVersion, VersionStatus
 from app.security import utcnow
 
@@ -60,7 +60,13 @@ def get_or_create_draft(db: Session, template: Template) -> TemplateVersion:
 def validate_version(version: TemplateVersion) -> list[str]:
     """Every check publish requires; also backs the standalone /validate
     endpoint so users can check before committing to publish."""
-    return schema_subset.validate(version.json_schema)
+    errors = schema_subset.validate(version.json_schema)
+    if errors:
+        return errors  # rule/scoring validation needs a valid schema first
+
+    errors += validate_rules(version.rules, version.json_schema)
+    errors += validate_scoring_config(version.scoring, version.rules)
+    return errors
 
 
 def publish(db: Session, version: TemplateVersion, *, published_by: uuid.UUID) -> TemplateVersion:

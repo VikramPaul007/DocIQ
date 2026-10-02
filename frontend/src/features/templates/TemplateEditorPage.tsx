@@ -7,7 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ApiError, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { fieldPaths } from "@/lib/schema-fields";
 import type { Template, TemplateVersion, ValidateResult } from "@/lib/types";
+
+const RULE_CATEGORIES = [
+  "completeness",
+  "validation",
+  "eligibility",
+  "risk",
+  "compliance",
+  "business",
+] as const;
 
 const tabTrigger =
   "rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 " +
@@ -49,14 +59,26 @@ export function TemplateEditorPage() {
 
   const [systemPrompt, setSystemPrompt] = useState("");
   const [schemaText, setSchemaText] = useState("");
+  const [rulesText, setRulesText] = useState("");
+  const [scoringText, setScoringText] = useState("");
   const [dirty, setDirty] = useState(false);
   useEffect(() => {
     if (version) {
       setSystemPrompt(version.system_prompt);
       setSchemaText(JSON.stringify(version.json_schema, null, 2));
+      setRulesText(JSON.stringify(version.rules, null, 2));
+      setScoringText(JSON.stringify(version.scoring, null, 2));
       setDirty(false);
     }
   }, [version]);
+
+  const availableFields = useMemo(() => {
+    try {
+      return fieldPaths(JSON.parse(schemaText));
+    } catch {
+      return {};
+    }
+  }, [schemaText]);
 
   const [error, setError] = useState<string | null>(null);
   const [validation, setValidation] = useState<ValidateResult | null>(null);
@@ -68,15 +90,18 @@ export function TemplateEditorPage() {
 
   const save = useMutation({
     mutationFn: () => {
-      let parsedSchema: unknown;
-      try {
-        parsedSchema = JSON.parse(schemaText);
-      } catch {
-        throw new Error("Schema is not valid JSON");
-      }
+      const parse = (label: string, text: string): unknown => {
+        try {
+          return JSON.parse(text);
+        } catch {
+          throw new Error(`${label} is not valid JSON`);
+        }
+      };
       return api.put(`/versions/${selectedVersionId}`, {
         system_prompt: systemPrompt,
-        json_schema: parsedSchema,
+        json_schema: parse("Schema", schemaText),
+        rules: parse("Rules", rulesText),
+        scoring: parse("Scoring", scoringText),
       });
     },
     onSuccess: () => {
@@ -167,6 +192,12 @@ export function TemplateEditorPage() {
           </Tabs.Trigger>
           <Tabs.Trigger value="schema" className={tabTrigger}>
             Schema
+          </Tabs.Trigger>
+          <Tabs.Trigger value="rules" className={tabTrigger}>
+            Rules
+          </Tabs.Trigger>
+          <Tabs.Trigger value="scoring" className={tabTrigger}>
+            Scoring
           </Tabs.Trigger>
           <Tabs.Trigger value="publish" className={tabTrigger}>
             Publish
@@ -276,6 +307,127 @@ export function TemplateEditorPage() {
                 <div className={validation.valid ? "text-sm text-green-700" : "text-sm text-red-600"}>
                   {validation.valid ? (
                     "Schema and rules are valid."
+                  ) : (
+                    <ul className="list-disc pl-5">
+                      {validation.errors.map((e, i) => (
+                        <li key={i}>{e}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Tabs.Content>
+
+        <Tabs.Content value="rules" className="pt-4">
+          <Card>
+            <CardContent className="flex flex-col gap-3 pt-4">
+              <p className="text-xs text-slate-500">
+                Categories: {RULE_CATEGORIES.join(", ")}. Each rule:{" "}
+                <code>{"{id, category, name, message, weight, condition}"}</code>. A condition is a
+                leaf <code>{"{field, op, value?}"}</code> or a nested{" "}
+                <code>{"{all:[...]} / {any:[...]} / {not: ...}"}</code>.
+              </p>
+              {Object.keys(availableFields).length > 0 && (
+                <div className="rounded-md bg-slate-50 p-2 text-xs text-slate-600">
+                  <strong>Available fields:</strong>{" "}
+                  {Object.entries(availableFields)
+                    .map(([path, type]) => `${path} (${type})`)
+                    .join(", ")}
+                </div>
+              )}
+              <label className="text-sm font-medium text-slate-700" htmlFor="rules">
+                Rules (JSON array)
+              </label>
+              <textarea
+                id="rules"
+                spellCheck={false}
+                className="h-80 w-full rounded-md border border-slate-300 p-3 font-mono text-sm disabled:bg-slate-50"
+                value={rulesText}
+                disabled={!isDraft || !canManage}
+                onChange={(e) => {
+                  setRulesText(e.target.value);
+                  setDirty(true);
+                }}
+              />
+              {isDraft && canManage && (
+                <div className="flex gap-2">
+                  <Button
+                    disabled={!dirty || save.isPending}
+                    onClick={() => {
+                      setError(null);
+                      save.mutate();
+                    }}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={validate.isPending}
+                    onClick={() => {
+                      setError(null);
+                      validate.mutate();
+                    }}
+                  >
+                    Validate
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Tabs.Content>
+
+        <Tabs.Content value="scoring" className="pt-4">
+          <Card>
+            <CardContent className="flex flex-col gap-3 pt-4">
+              <p className="text-xs text-slate-500">
+                <code>{"{weights: {rule_id: number}, thresholds: {low, medium, high}}"}</code>.
+                Score is the sum of weights of rules that <em>fail</em>; risk is the highest
+                threshold the score reaches. Optional — leave as <code>{"{}"}</code> for an
+                unscored template.
+              </p>
+              <label className="text-sm font-medium text-slate-700" htmlFor="scoring">
+                Scoring config (JSON)
+              </label>
+              <textarea
+                id="scoring"
+                spellCheck={false}
+                className="h-48 w-full rounded-md border border-slate-300 p-3 font-mono text-sm disabled:bg-slate-50"
+                value={scoringText}
+                disabled={!isDraft || !canManage}
+                onChange={(e) => {
+                  setScoringText(e.target.value);
+                  setDirty(true);
+                }}
+              />
+              {isDraft && canManage && (
+                <div className="flex gap-2">
+                  <Button
+                    disabled={!dirty || save.isPending}
+                    onClick={() => {
+                      setError(null);
+                      save.mutate();
+                    }}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={validate.isPending}
+                    onClick={() => {
+                      setError(null);
+                      validate.mutate();
+                    }}
+                  >
+                    Validate
+                  </Button>
+                </div>
+              )}
+              {validation && (
+                <div className={validation.valid ? "text-sm text-green-700" : "text-sm text-red-600"}>
+                  {validation.valid ? (
+                    "Schema, rules and scoring are all valid."
                   ) : (
                     <ul className="list-disc pl-5">
                       {validation.errors.map((e, i) => (

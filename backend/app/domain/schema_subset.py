@@ -106,3 +106,44 @@ def field_paths(schema: dict[str, Any]) -> dict[str, str]:
 
     walk(schema, "")
     return paths
+
+
+def field_formats(schema: dict[str, Any]) -> dict[str, str | None]:
+    """Parallel to ``field_paths``, but the string ``format`` (e.g. "date")
+    instead of the type — the rule engine uses this to tell a plain string
+    field from a date field, since both report type "string"."""
+    formats: dict[str, str | None] = {}
+
+    def walk(node: dict[str, Any], path: str) -> None:
+        node_type: str = node["type"]
+        if node_type == "object":
+            for name, child in node.get("properties", {}).items():
+                walk(child, f"{path}.{name}" if path else name)
+        elif node_type == "array":
+            walk(node.get("items", {}), f"{path}[]")
+        else:
+            formats[path] = node.get("format")
+
+    walk(schema, "")
+    return formats
+
+
+def array_paths(schema: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Maps each array field's dotted path (no trailing ``[]``) to its item
+    subschema, e.g. {"documents": {...}} — used by the rule engine's array
+    operators (count_*, any_item, all_item). Doesn't recurse into an array's
+    own items looking for further nested arrays: any_item/all_item wrap one
+    level of nested condition, which covers the documents-list-of-objects
+    shape this platform's templates actually use."""
+    result: dict[str, dict[str, Any]] = {}
+
+    def walk(node: dict[str, Any], path: str) -> None:
+        node_type = node.get("type")
+        if node_type == "object":
+            for name, child in node.get("properties", {}).items():
+                walk(child, f"{path}.{name}" if path else name)
+        elif node_type == "array":
+            result[path] = node.get("items", {})
+
+    walk(schema, "")
+    return result
