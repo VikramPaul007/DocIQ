@@ -65,9 +65,7 @@ def decrypt(blob: bytes) -> bytes:
 
 def put_document(storage_key: uuid.UUID, data: bytes) -> None:
     client = get_s3_client()
-    client.put_object(
-        Bucket=settings.minio_bucket, Key=str(storage_key), Body=encrypt(data)
-    )
+    client.put_object(Bucket=settings.minio_bucket, Key=str(storage_key), Body=encrypt(data))
 
 
 def get_document(storage_key: uuid.UUID) -> bytes:

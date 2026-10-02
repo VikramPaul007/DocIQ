@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { DocumentsPage } from "@/features/documents/DocumentsPage";
+import { RecordReviewPage } from "@/features/review/RecordReviewPage";
+import { ReviewQueuePage } from "@/features/review/ReviewQueuePage";
 import { TemplateEditorPage } from "@/features/templates/TemplateEditorPage";
 import { TemplatesPage } from "@/features/templates/TemplatesPage";
 import { WorkspaceDetailPage } from "@/features/workspaces/WorkspaceDetailPage";
@@ -23,6 +25,8 @@ export function App() {
             element={<TemplateEditorPage />}
           />
           <Route path="/workspaces/:workspaceId/documents" element={<DocumentsPage />} />
+          <Route path="/workspaces/:workspaceId/review" element={<ReviewQueuePage />} />
+          <Route path="/workspaces/:workspaceId/review/:recordId" element={<RecordReviewPage />} />
           <Route path="/" element={<Navigate to="/workspaces" replace />} />
         </Route>
       </Route>

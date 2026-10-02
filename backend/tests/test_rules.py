@@ -30,7 +30,14 @@ EVALUATED_AT = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def _rule(condition: dict, rule_id: str = "r1") -> dict:
-    return {"id": rule_id, "category": "completeness", "name": rule_id, "message": "m", "weight": 1, "condition": condition}
+    return {
+        "id": rule_id,
+        "category": "completeness",
+        "name": rule_id,
+        "message": "m",
+        "weight": 1,
+        "condition": condition,
+    }
 
 
 def _run(condition: dict, data: dict) -> tuple[bool, object]:
@@ -52,7 +59,10 @@ def test_validate_rejects_wrong_operator_for_type() -> None:
 
 
 def test_validate_rejects_duplicate_ids() -> None:
-    rules = [_rule({"field": "name", "op": "exists"}, "r1"), _rule({"field": "age", "op": "exists"}, "r1")]
+    rules = [
+        _rule({"field": "name", "op": "exists"}, "r1"),
+        _rule({"field": "age", "op": "exists"}, "r1"),
+    ]
     errors = validate_rules(rules, SCHEMA)
     assert any("duplicate" in e for e in errors)
 
@@ -68,7 +78,9 @@ def test_validate_matches_rejects_bad_regex() -> None:
 
 
 def test_validate_any_item_checks_nested_field() -> None:
-    good = _rule({"field": "documents", "op": "any_item", "item": {"field": "doc_type", "op": "exists"}})
+    good = _rule(
+        {"field": "documents", "op": "any_item", "item": {"field": "doc_type", "op": "exists"}}
+    )
     assert validate_rules([good], SCHEMA) == []
 
     bad = _rule({"field": "documents", "op": "any_item", "item": {"field": "nope", "op": "exists"}})
@@ -110,10 +122,18 @@ def test_validate_rejects_array_op_on_non_array_field() -> None:
         ({"field": "dob", "op": "after", "value": "2000-01-01"}, {"dob": "2010-01-01"}, True),
         ({"field": "dob", "op": "within_days", "value": 400}, {"dob": "2025-01-01"}, True),
         ({"field": "dob", "op": "older_than_days", "value": 100}, {"dob": "2000-01-01"}, True),
-        ({"field": "documents", "op": "count_gte", "value": 1}, {"documents": [{"doc_type": "pan"}]}, True),
+        (
+            {"field": "documents", "op": "count_gte", "value": 1},
+            {"documents": [{"doc_type": "pan"}]},
+            True,
+        ),
         ({"field": "documents", "op": "count_eq", "value": 0}, {"documents": []}, True),
         (
-            {"field": "documents", "op": "any_item", "item": {"field": "doc_type", "op": "eq", "value": "pan"}},
+            {
+                "field": "documents",
+                "op": "any_item",
+                "item": {"field": "doc_type", "op": "eq", "value": "pan"},
+            },
             {"documents": [{"doc_type": "aadhaar"}, {"doc_type": "pan"}]},
             True,
         ),

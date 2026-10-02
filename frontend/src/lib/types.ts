@@ -124,6 +124,36 @@ export interface Contributor {
   message: string;
 }
 
+export interface ReviewQueueEntry {
+  job_id: string;
+  document_id: string;
+  record_id: string;
+  template_version_id: string;
+  original_filename: string;
+  risk_level: "low" | "medium" | "high" | null;
+  score: string | null;
+  summary: string | null;
+  created_at: string;
+}
+
+export type ReviewAction = "approve" | "reject" | "request_correction";
+
+export interface ReviewOut {
+  id: string;
+  record_id: string;
+  reviewer_id: string;
+  action: ReviewAction;
+  comment: string | null;
+  created_at: string;
+}
+
+export interface TimelineEntry {
+  at: string;
+  actor_email: string | null;
+  action: string;
+  details: Record<string, unknown> | null;
+}
+
 export interface RecordOut {
   id: string;
   job_id: string;

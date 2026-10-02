@@ -66,6 +66,12 @@ export function WorkspaceDetailPage() {
           >
             Documents →
           </Link>
+          <Link
+            to={`/workspaces/${workspaceId}/review`}
+            className="text-sm font-medium text-slate-700 underline"
+          >
+            Review queue →
+          </Link>
         </div>
       </div>
 

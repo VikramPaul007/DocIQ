@@ -28,7 +28,11 @@ def minimal_pdf_with_text(text_content: str) -> bytes:
         b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
         b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R"
         b"/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
-        b"4 0 obj<</Length " + str(len(stream)).encode() + b">>stream\n" + stream + b"\nendstream\nendobj\n"
+        b"4 0 obj<</Length "
+        + str(len(stream)).encode()
+        + b">>stream\n"
+        + stream
+        + b"\nendstream\nendobj\n"
         b"5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n"
         b"trailer<</Root 1 0 R>>\n%%EOF"
     )
@@ -46,6 +50,7 @@ def minimal_blank_pdf(pages: int = 1) -> bytes:
     doc.save(buf)
     doc.close()
     return buf.getvalue()
+
 
 # Child-to-parent order so FK constraints don't block the cleanup even though
 # most of them would CASCADE anyway.

@@ -31,7 +31,11 @@ from tests.conftest import minimal_pdf_with_text
 _worker_engine = create_engine(settings.worker_dsn)
 _WorkerSession = sessionmaker(bind=_worker_engine, autoflush=False, expire_on_commit=False)
 
-SCHEMA = {"type": "object", "additionalProperties": False, "properties": {"name": {"type": "string"}}}
+SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {"name": {"type": "string"}},
+}
 RULES = [
     {
         "id": "has-name",

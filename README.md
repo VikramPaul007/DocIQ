@@ -5,14 +5,20 @@ AI-assisted, configuration-driven document intelligence platform. See
 [docs/technical-implementation-plan.md](docs/technical-implementation-plan.md)
 for the full architecture and build plan this repo follows.
 
-**Status:** Milestones 1–2 (infra skeleton, auth/tenancy/audit) are in place and
-verified: migrations, RLS, immutability triggers, the auth/workspace API, and
-the login/workspaces frontend all pass their tests and work end-to-end over
-HTTPS. Templates, rules, the processing pipeline, and review are under active
-build — see the plan's "Build order" section for what's next. Until the worker
-pipeline lands, `app/worker.py` doesn't exist yet, so the `worker` container
-will restart-loop if started; that's expected, not a bug (`docker compose stop
-worker` to quiet it in the meantime).
+**Status:** Milestones 1–8 (the full MVP build order in the plan below) are
+done: infra, auth/tenancy/audit, templates and versioning, the Template Agent,
+the rule/scoring engine, the OCR+LLM processing pipeline with encrypted
+storage and a test harness, document ingestion with job retry, and the
+reviewer queue with an audit timeline. 156 backend tests, clean ruff/mypy,
+clean frontend tsc/eslint. Milestone 9 (CI hardening polish beyond what
+already runs, `pip-audit`/`npm audit` as hard gates, gitleaks) is the one
+piece left from the original plan.
+
+To actually use the Template Agent and document extraction against a real
+model, put a real key in `.env`'s `LLM_API_KEY` (the committed `.env` ships
+with a placeholder — the OCR and storage pipeline is real and already
+verified end-to-end; only the LLM calls need a real key to go past "invalid
+API key").
 
 ## Architecture
 

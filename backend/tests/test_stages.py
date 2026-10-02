@@ -21,7 +21,12 @@ SCHEMA = {
 
 
 def _version(**overrides) -> TemplateVersion:
-    defaults = {"system_prompt": "Extract the name.", "json_schema": SCHEMA, "rules": [], "scoring": {}}
+    defaults = {
+        "system_prompt": "Extract the name.",
+        "json_schema": SCHEMA,
+        "rules": [],
+        "scoring": {},
+    }
     defaults.update(overrides)
     return TemplateVersion(**defaults)
 
@@ -49,7 +54,13 @@ def test_run_ocr_raises_permanent_error_for_corrupt_pdf() -> None:
 
 
 def test_run_extraction_populates_record_on_success() -> None:
-    record = Record(ocr={"pages": [{"page": 1, "method": "text_layer", "text": "Name: Alice", "confidence": None}]})
+    record = Record(
+        ocr={
+            "pages": [
+                {"page": 1, "method": "text_layer", "text": "Name: Alice", "confidence": None}
+            ]
+        }
+    )
     llm = FakeLlmProvider([{"name": "Alice"}])
     stages.run_extraction(record, _version(), llm)
     assert record.extraction == {"name": "Alice"}

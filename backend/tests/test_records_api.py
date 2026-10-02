@@ -15,7 +15,11 @@ from app.models import (
     Workspace,
 )
 
-SCHEMA = {"type": "object", "additionalProperties": False, "properties": {"name": {"type": "string"}}}
+SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {"name": {"type": "string"}},
+}
 
 
 def _make_record(db, *, member_user_id=None) -> tuple[uuid.UUID, uuid.UUID]:
@@ -26,30 +30,53 @@ def _make_record(db, *, member_user_id=None) -> tuple[uuid.UUID, uuid.UUID]:
     db.add(template)
     db.commit()
     version = TemplateVersion(
-        workspace_id=ws.id, template_id=template.id, version_no=1, status=VersionStatus.published,
-        system_prompt="p", json_schema=SCHEMA, rules=[], scoring={}, content_hash="abc",
+        workspace_id=ws.id,
+        template_id=template.id,
+        version_no=1,
+        status=VersionStatus.published,
+        system_prompt="p",
+        json_schema=SCHEMA,
+        rules=[],
+        scoring={},
+        content_hash="abc",
     )
     db.add(version)
     db.commit()
     document = Document(
-        workspace_id=ws.id, template_version_id=version.id, storage_key=uuid.uuid4(),
-        sha256="x", size=1, page_count=1, original_filename="a.pdf",
+        workspace_id=ws.id,
+        template_version_id=version.id,
+        storage_key=uuid.uuid4(),
+        sha256="x",
+        size=1,
+        page_count=1,
+        original_filename="a.pdf",
     )
     db.add(document)
     db.commit()
-    job = Job(workspace_id=ws.id, document_id=document.id, kind="runtime", status=JobStatus.review_required)
+    job = Job(
+        workspace_id=ws.id,
+        document_id=document.id,
+        kind="runtime",
+        status=JobStatus.review_required,
+    )
     db.add(job)
     db.commit()
     record = Record(
-        workspace_id=ws.id, job_id=job.id, document_id=document.id, template_version_id=version.id,
-        extraction={"name": "Alice"}, summary="A summary.",
+        workspace_id=ws.id,
+        job_id=job.id,
+        document_id=document.id,
+        template_version_id=version.id,
+        extraction={"name": "Alice"},
+        summary="A summary.",
     )
     db.add(record)
     db.commit()
     return ws.id, record.id
 
 
-def test_get_record_requires_membership(client: TestClient, make_user, login_as, make_membership, db) -> None:
+def test_get_record_requires_membership(
+    client: TestClient, make_user, login_as, make_membership, db
+) -> None:
     ws_id, record_id = _make_record(db)
     outsider = make_user()
     login_as(outsider)

@@ -39,7 +39,9 @@ def _make_workspace_with_admin(db, make_user, make_membership):
     return ws, admin
 
 
-def test_upload_rejects_non_pdf(client: TestClient, make_user, login_as, make_membership, db) -> None:
+def test_upload_rejects_non_pdf(
+    client: TestClient, make_user, login_as, make_membership, db
+) -> None:
     ws, admin = _make_workspace_with_admin(db, make_user, make_membership)
     csrf = login_as(admin)
     version_id = _published_version(client, csrf, ws.id)
@@ -53,7 +55,9 @@ def test_upload_rejects_non_pdf(client: TestClient, make_user, login_as, make_me
     assert resp.status_code == 422
 
 
-def test_upload_rejects_oversized_file(client: TestClient, make_user, login_as, make_membership, db) -> None:
+def test_upload_rejects_oversized_file(
+    client: TestClient, make_user, login_as, make_membership, db
+) -> None:
     ws, admin = _make_workspace_with_admin(db, make_user, make_membership)
     csrf = login_as(admin)
     version_id = _published_version(client, csrf, ws.id)
@@ -68,7 +72,9 @@ def test_upload_rejects_oversized_file(client: TestClient, make_user, login_as, 
     assert resp.status_code == 413
 
 
-def test_upload_rejects_draft_version(client: TestClient, make_user, login_as, make_membership, db) -> None:
+def test_upload_rejects_draft_version(
+    client: TestClient, make_user, login_as, make_membership, db
+) -> None:
     ws, admin = _make_workspace_with_admin(db, make_user, make_membership)
     csrf = login_as(admin)
     template_id = client.post(
@@ -98,7 +104,9 @@ def test_upload_succeeds_and_creates_queued_job(
         f"/api/workspaces/{ws.id}/documents",
         headers={"X-CSRF-Token": csrf},
         params={"template_version_id": version_id},
-        files={"file": ("sample.pdf", minimal_pdf_with_text("Name: Alice Example"), "application/pdf")},
+        files={
+            "file": ("sample.pdf", minimal_pdf_with_text("Name: Alice Example"), "application/pdf")
+        },
     )
     assert resp.status_code == 201, resp.text
     body = resp.json()
@@ -115,7 +123,9 @@ def test_upload_succeeds_and_creates_queued_job(
     assert file_resp.content.startswith(b"%PDF-")
 
 
-def test_reviewer_cannot_upload(client: TestClient, make_user, login_as, make_membership, db) -> None:
+def test_reviewer_cannot_upload(
+    client: TestClient, make_user, login_as, make_membership, db
+) -> None:
     ws, admin = _make_workspace_with_admin(db, make_user, make_membership)
     csrf = login_as(admin)
     version_id = _published_version(client, csrf, ws.id)

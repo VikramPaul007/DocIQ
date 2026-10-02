@@ -34,8 +34,12 @@ def test_validate_accepts_well_formed_config() -> None:
 
 def test_score_only_counts_failed_rules() -> None:
     results = [
-        RuleResult(rule_id="has-pan", category="completeness", passed=True, message="", actual=None),
-        RuleResult(rule_id="age-ok", category="eligibility", passed=False, message="too young", actual=15),
+        RuleResult(
+            rule_id="has-pan", category="completeness", passed=True, message="", actual=None
+        ),
+        RuleResult(
+            rule_id="age-ok", category="eligibility", passed=False, message="too young", actual=15
+        ),
     ]
     result = score(results, SCORING)
     assert result.total == Decimal("30")
@@ -48,7 +52,13 @@ def test_score_only_counts_failed_rules() -> None:
 def test_score_thresholds_golden_cases() -> None:
     def make(total_weight_rule_ids):
         return [
-            RuleResult(rule_id=rid, category="x", passed=rid not in total_weight_rule_ids, message="", actual=None)
+            RuleResult(
+                rule_id=rid,
+                category="x",
+                passed=rid not in total_weight_rule_ids,
+                message="",
+                actual=None,
+            )
             for rid in ("has-pan", "age-ok")
         ]
 
@@ -58,9 +68,14 @@ def test_score_thresholds_golden_cases() -> None:
 
 
 def test_score_ignores_zero_weight_rules_as_contributors() -> None:
-    scoring = {"weights": {"has-pan": 0, "age-ok": 10}, "thresholds": {"low": 0, "medium": 5, "high": 10}}
+    scoring = {
+        "weights": {"has-pan": 0, "age-ok": 10},
+        "thresholds": {"low": 0, "medium": 5, "high": 10},
+    }
     results = [
-        RuleResult(rule_id="has-pan", category="completeness", passed=False, message="", actual=None),
+        RuleResult(
+            rule_id="has-pan", category="completeness", passed=False, message="", actual=None
+        ),
         RuleResult(rule_id="age-ok", category="eligibility", passed=False, message="", actual=None),
     ]
     result = score(results, scoring)

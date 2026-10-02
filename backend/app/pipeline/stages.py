@@ -130,7 +130,10 @@ def run_rules(record: Record, version: TemplateVersion) -> None:
 def run_scoring(record: Record, version: TemplateVersion) -> None:
     results = [
         RuleResult(
-            rule_id=r["rule_id"], category=r["category"], passed=r["passed"], message=r["message"],
+            rule_id=r["rule_id"],
+            category=r["category"],
+            passed=r["passed"],
+            message=r["message"],
             actual=r["actual"],
         )
         for r in (record.rule_results or [])
