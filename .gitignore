@@ -1,0 +1,31 @@
+## env / secrets
+.env
+*.env.local
+
+## python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+## node
+node_modules/
+frontend/dist/
+.vite/
+
+## editor
+.vscode/
+.idea/
+
+## os
+.DS_Store
+Thumbs.db
+
+## caddy
+caddy_data/
+caddy_config/

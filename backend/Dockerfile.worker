@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+# PaddleOCR / OpenCV runtime libs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir uv==0.6.17
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+RUN uv sync --no-dev --extra worker
+
+COPY . .
+
+ENV PATH="/app/.venv/bin:${PATH}"
+
+CMD ["python", "-m", "app.worker"]

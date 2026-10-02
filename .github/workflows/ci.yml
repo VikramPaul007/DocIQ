@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate a throwaway .env for CI
+        run: |
+          python - <<'EOF'
+          import secrets
+          lines = [
+              "ENV=dev",
+              "POSTGRES_HOST=postgres", "POSTGRES_PORT=5432", "POSTGRES_DB=dociq",
+              "POSTGRES_OWNER_USER=dociq_owner", f"POSTGRES_OWNER_PASSWORD={secrets.token_urlsafe(18)}",
+              "POSTGRES_APP_USER=dociq_app", f"POSTGRES_APP_PASSWORD={secrets.token_urlsafe(18)}",
+              "POSTGRES_WORKER_USER=dociq_worker", f"POSTGRES_WORKER_PASSWORD={secrets.token_urlsafe(18)}",
+              f"SESSION_SECRET={secrets.token_hex(32)}",
+              f"DOCUMENT_ENCRYPTION_KEY={secrets.token_hex(32)}",
+              "MINIO_ENDPOINT=minio:9000", "MINIO_ROOT_USER=dociq_minio",
+              f"MINIO_ROOT_PASSWORD={secrets.token_urlsafe(18)}",
+              "MINIO_BUCKET=dociq-documents", "MINIO_SECURE=false",
+              "LLM_BASE_URL=https://api.openai.com/v1", "LLM_API_KEY=ci-placeholder-not-a-real-key",
+              "LLM_MODEL=gpt-4o-mini", "CADDY_DOMAIN=localhost",
+          ]
+          open(".env", "w").write("\n".join(lines) + "\n")
+          EOF
+
+      - name: Build images
+        run: docker compose build postgres minio api worker
+
+      - name: Start stack
+        run: docker compose up -d postgres minio api
+
+      - name: Wait for api health
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)" 2>/dev/null; then
+              echo "api healthy"; exit 0
+            fi
+            sleep 3
+          done
+          docker compose logs api
+          exit 1
+
+      - name: Lint (ruff)
+        run: docker compose exec -T api sh -c "uv sync && ruff check ."
+
+      - name: Type check (mypy)
+        run: docker compose exec -T api sh -c "uv sync && mypy app"
+
+      - name: Dependency audit (pip-audit)
+        run: docker compose exec -T api sh -c "uv sync && pip-audit --strict || true"
+
+      - name: Tests (pytest)
+        run: docker compose exec -T api sh -c "uv sync && pytest -q"
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm audit --audit-level=high || true
