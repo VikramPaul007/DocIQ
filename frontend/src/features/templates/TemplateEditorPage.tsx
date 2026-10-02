@@ -108,6 +108,19 @@ export function TemplateEditorPage() {
     },
   });
 
+  const generateConfig = useMutation({
+    mutationFn: () => api.post<TemplateVersion>(`/templates/${templateId}/generate`),
+    onSuccess: (draft) => {
+      setSystemPrompt(draft.system_prompt);
+      setSchemaText(JSON.stringify(draft.json_schema, null, 2));
+      setDirty(false);
+      setValidation(null);
+      invalidateEverything();
+    },
+    onError: (err: unknown) =>
+      setError(err instanceof ApiError ? err.message : "Could not generate a configuration"),
+  });
+
   const isDraft = version?.status === "draft";
   const hasOpenDraft = useMemo(() => versions?.some((v) => v.status === "draft") ?? false, [versions]);
 
@@ -144,8 +157,11 @@ export function TemplateEditorPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <Tabs.Root defaultValue="prompt">
+      <Tabs.Root defaultValue="generate">
         <Tabs.List className="flex gap-2 border-b border-slate-200 pb-2">
+          <Tabs.Trigger value="generate" className={tabTrigger}>
+            Generate
+          </Tabs.Trigger>
           <Tabs.Trigger value="prompt" className={tabTrigger}>
             Prompt
           </Tabs.Trigger>
@@ -156,6 +172,33 @@ export function TemplateEditorPage() {
             Publish
           </Tabs.Trigger>
         </Tabs.List>
+
+        <Tabs.Content value="generate" className="pt-4">
+          <Card>
+            <CardContent className="flex flex-col gap-3 pt-4">
+              <p className="text-sm text-slate-600">
+                Generates a first-draft system prompt and JSON schema from this template&rsquo;s
+                purpose (&ldquo;{template?.purpose}&rdquo;). This overwrites the current
+                draft&rsquo;s Prompt and Schema tabs &mdash; review and edit them, then mark
+                reviewed before publishing.
+              </p>
+              {isDraft && canManage ? (
+                <Button
+                  className="self-start"
+                  disabled={generateConfig.isPending}
+                  onClick={() => {
+                    setError(null);
+                    generateConfig.mutate();
+                  }}
+                >
+                  {generateConfig.isPending ? "Generating…" : "Generate"}
+                </Button>
+              ) : (
+                <p className="text-sm text-slate-500">Open a draft to generate a configuration.</p>
+              )}
+            </CardContent>
+          </Card>
+        </Tabs.Content>
 
         <Tabs.Content value="prompt" className="pt-4">
           <Card>

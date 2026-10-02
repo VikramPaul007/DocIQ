@@ -21,9 +21,15 @@ from app.db import get_db
 from app.deps import ANY_ROLE, CurrentUser, check_workspace_role, require_workspace_role
 from app.domain.versioning import PublishError, get_or_create_draft, publish, validate_version
 from app.models import MembershipRole, Template, TemplateVersion, User, VersionStatus
+from app.pipeline.agent import AgentGenerationError, generate
+from app.providers.llm import LlmOutputInvalidError, LlmProvider, OpenAICompatibleProvider
 from app.security import utcnow
 
 router = APIRouter(tags=["templates"])
+
+
+def get_llm_provider() -> LlmProvider:
+    return OpenAICompatibleProvider()
 
 
 class TemplateCreate(BaseModel):
@@ -181,6 +187,57 @@ def update_template(
         data={},
     )
     return template
+
+
+@router.post("/api/templates/{template_id}/generate", response_model=TemplateVersionOut)
+def generate_template_config(
+    template_id: uuid.UUID,
+    user: CurrentUser,
+    db: Session = Depends(get_db),
+    provider: LlmProvider = Depends(get_llm_provider),
+) -> TemplateVersion:
+    """Runs the Template Agent and writes its output into the current draft
+    (creating one if needed). Always overwrites the draft's prompt/schema —
+    the UI's edit/approve step is what then lets a human correct or accept
+    it, per "AI-generated configuration requires human review" (BRD §11)."""
+    template = _get_template_or_404(template_id, db)
+    check_workspace_role(db, user, template.workspace_id, (MembershipRole.admin,))
+    draft = get_or_create_draft(db, template)
+
+    try:
+        result = generate(
+            provider,
+            name=template.name,
+            purpose=template.purpose,
+            document_type=template.document_type,
+        )
+    except AgentGenerationError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            f"Agent produced an invalid schema after a repair attempt: {'; '.join(exc.errors)}",
+        ) from exc
+    except LlmOutputInvalidError as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, f"LLM returned invalid output: {exc}"
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "LLM provider error") from exc
+
+    draft.system_prompt = result.system_prompt
+    draft.json_schema = result.json_schema
+    draft.agent_generated = True
+    draft.human_reviewed_by = None  # new content: any prior review no longer applies
+    draft.human_reviewed_at = None
+    record_audit_event(
+        db,
+        actor_id=user.id,
+        workspace_id=template.workspace_id,
+        entity_type="template_version",
+        entity_id=draft.id,
+        action="agent_generated",
+        data={"model": result.model},
+    )
+    return draft
 
 
 @router.post("/api/templates/{template_id}/draft", response_model=TemplateVersionOut)

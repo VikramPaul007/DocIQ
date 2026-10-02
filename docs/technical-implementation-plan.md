@@ -197,10 +197,10 @@ POST /api/records/{id}/reviews               GET /api/records/{id}/audit
 
 ## Build order (single pass; each milestone is gated by its check)
 
-1. **Infra skeleton**: compose (postgres, minio, api, worker, caddy, vite dev), settings, Alembic baseline, DB roles, `/api/health` (DB + MinIO). ✔ `docker compose up` → health 200 over https://localhost.
-2. **Auth, tenancy, audit**: users, sessions, CSRF, lockout, memberships, RLS, `audit_events`, `create-admin` CLI. Frontend: login, app shell, workspaces and members. ✔ pytest authz matrix (below) passes.
-3. **Templates and versioning**: CRUD, schema subset validator, draft/publish/clone, immutability trigger. Frontend: template list, editor shell, prompt and schema editors. ✔ tests: published UPDATE raises at the DB level; edit-published creates v+1 draft.
-4. **LLM provider and Template Agent**. Frontend: Generate. ✔ a real call against the configured endpoint gives a valid schema on the HR onboarding purpose; FakeProvider tests cover repair/invalid paths.
+1. ✅ **[DONE] Infra skeleton**: compose (postgres, minio, api, worker, caddy, vite dev), settings, Alembic baseline, DB roles, `/api/health` (DB + MinIO). ✔ `docker compose up` → health 200 over https://localhost.
+2. ✅ **[DONE] Auth, tenancy, audit**: users, sessions, CSRF, lockout, memberships, RLS, `audit_events`, `create-admin` CLI. Frontend: login, app shell, workspaces and members. ✔ pytest authz matrix (below) passes.
+3. ✅ **[DONE] Templates and versioning**: CRUD, schema subset validator, draft/publish/clone, immutability trigger. Frontend: template list, editor shell, prompt and schema editors. ✔ tests: published UPDATE raises at the DB level; edit-published creates v+1 draft.
+4. ✅ **[DONE] LLM provider and Template Agent**. Frontend: Generate. ✔ a real call against the configured endpoint gives a valid schema on the HR onboarding purpose; FakeProvider tests cover repair/invalid paths.
 5. **Rules and scoring**: engine, validators, UI builder and scoring tab. ✔ table-driven tests for every operator/type pair, missing fields and the date reference; scoring golden tests (known results give a known score and risk).
 6. **Storage, OCR, pipeline, test harness**: encryption, PaddleOCR worker image, the 8 stages, retries and leases. Frontend: Test tab. ✔ a scanned and a text PDF both run end to end through the test harness; a killed worker mid-job resumes; a forced transient error retries, then FAILED, then the manual retry works.
 7. **Publish and runtime ingestion**: upload, jobs list, failure view and retry. ✔ upload returns in under 500 ms with a job ID; the record references the exact version ID.
