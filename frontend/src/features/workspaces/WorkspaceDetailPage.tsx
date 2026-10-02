@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,7 +51,15 @@ export function WorkspaceDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-slate-900">{workspace?.name ?? "…"}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-slate-900">{workspace?.name ?? "…"}</h1>
+        <Link
+          to={`/workspaces/${workspaceId}/templates`}
+          className="text-sm font-medium text-slate-700 underline"
+        >
+          Templates →
+        </Link>
+      </div>
 
       <Card>
         <CardHeader>

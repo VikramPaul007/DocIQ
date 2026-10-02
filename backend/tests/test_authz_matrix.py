@@ -48,7 +48,13 @@ def _all_protected_routes() -> list[tuple[str, str]]:
 
 def _fill_path(path_template: str) -> str:
     return path_template.format(
-        workspace_id=uuid.uuid4(), user_id=uuid.uuid4(), document_id=uuid.uuid4()
+        workspace_id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        document_id=uuid.uuid4(),
+        template_id=uuid.uuid4(),
+        version_id=uuid.uuid4(),
+        job_id=uuid.uuid4(),
+        record_id=uuid.uuid4(),
     )
 
 

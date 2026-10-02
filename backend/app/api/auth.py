@@ -217,7 +217,7 @@ def change_password(
     try:
         validate_password_policy(payload.new_password)
     except WeakPasswordError as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
     user.password_hash = hash_password(payload.new_password)
     record_audit_event(
         db,

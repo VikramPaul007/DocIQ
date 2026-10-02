@@ -36,7 +36,7 @@ def create_user(
     try:
         validate_password_policy(payload.password)
     except WeakPasswordError as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
 
     user = User(
         email=payload.email,

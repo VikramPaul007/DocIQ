@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.api import auth, users, workspaces
+from app.api import auth, templates, users, workspaces
 from app.config import settings
 from app.db import engine
 from app.logging_config import configure_logging
@@ -93,3 +93,4 @@ def health() -> dict[str, bool | str]:
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(workspaces.router)
+app.include_router(templates.router)

@@ -90,25 +90,34 @@ def require_platform_admin(user: CurrentUser) -> User:
     return user
 
 
-def require_workspace_role(*allowed_roles: MembershipRole) -> Callable[..., User]:
+def check_workspace_role(
+    db: Session, user: User, workspace_id: uuid.UUID, allowed_roles: tuple[MembershipRole, ...]
+) -> None:
+    """The shared check behind both ``require_workspace_role`` (path has a
+    ``workspace_id``) and entity-scoped routes like templates/versions, which
+    resolve their own workspace_id from the entity (already RLS-filtered to
+    "not found" for non-members) and then call this for the role check."""
+    if user.is_platform_admin:
+        return
     allowed = {r.value for r in allowed_roles}
+    membership = (
+        db.query(Membership)
+        .filter(Membership.workspace_id == workspace_id, Membership.user_id == user.id)
+        .first()
+    )
+    if membership is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    if membership.role not in allowed:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient role for this workspace")
 
+
+def require_workspace_role(*allowed_roles: MembershipRole) -> Callable[..., User]:
     def _dep(
         workspace_id: uuid.UUID,
         user: CurrentUser,
         db: Session = Depends(get_db),
     ) -> User:
-        if user.is_platform_admin:
-            return user
-        membership = (
-            db.query(Membership)
-            .filter(Membership.workspace_id == workspace_id, Membership.user_id == user.id)
-            .first()
-        )
-        if membership is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
-        if membership.role not in allowed:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient role for this workspace")
+        check_workspace_role(db, user, workspace_id, allowed_roles)
         return user
 
     return _dep

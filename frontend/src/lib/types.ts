@@ -34,3 +34,37 @@ export interface Member {
   role: Role;
   created_at: string;
 }
+
+export interface Template {
+  id: string;
+  workspace_id: string;
+  name: string;
+  purpose: string;
+  document_type: string;
+  created_at: string;
+}
+
+export type VersionStatus = "draft" | "published" | "archived";
+
+export interface TemplateVersion {
+  id: string;
+  template_id: string;
+  version_no: number;
+  status: VersionStatus;
+  system_prompt: string;
+  json_schema: Record<string, unknown>;
+  rules: unknown[];
+  scoring: Record<string, unknown>;
+  agent_generated: boolean;
+  human_reviewed_by: string | null;
+  human_reviewed_at: string | null;
+  content_hash: string | null;
+  published_by: string | null;
+  published_at: string | null;
+  created_at: string;
+}
+
+export interface ValidateResult {
+  valid: boolean;
+  errors: string[];
+}
